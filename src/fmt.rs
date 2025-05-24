@@ -10,7 +10,7 @@
 //! crate level as `size::Base` and `size::Style`.
 
 use super::*;
-use core::fmt;
+use core::{convert::TryInto, fmt};
 
 /// An enumeration of supported bases to use for generating textual descriptions of sizes.
 ///
@@ -326,10 +326,19 @@ impl SizeFormatter<()> {
 
     /// Formats a provided size in bytes as a string, per the configuration of the current
     /// `SizeFormatter` instance.
-    pub fn format(&self, bytes: i64) -> String {
+    ///
+    /// If `bytes` is larger than `i64::MAX`, this function will panic! E.g., if you passed
+    /// `u64::MAX` as `bytes`, you'd be in for a bad time.
+    pub fn format<B>(&self, bytes: B) -> String
+    where
+        B: TryInto<i64> + Copy,
+        B::Error: std::fmt::Debug,
+    {
         format!(
             "{}",
-            FmtRenderer::new(|fmt: &mut fmt::Formatter| { self.inner_fmt(fmt, bytes) })
+            FmtRenderer::new(|fmt: &mut fmt::Formatter| {
+                self.inner_fmt(fmt, bytes.try_into().expect("Too many bytes O.o"))
+            })
         )
     }
 }
